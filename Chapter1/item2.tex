@@ -1,0 +1,200 @@
+\section{条款2：理解auto类型推导}
+
+如果你已经阅读了条款1，那么你几乎已经掌握了关于auto类型推导的全部知识，因为除了一个例外之外，auto类型推导几乎就是模板类型推导。但是怎么会呢？模板类型推导包括了模板、函数和形参，但是auto并不处理它们中的任一个。
+
+事实确实如此，但是也并没有关系。模板类型推导和auto类型推导之间存在一个映射。通过一种逐字逐句的算法进行互相转换。
+
+在条款1中，模板类型推导使用了如下的函数模板：
+
+\begin{lstlisting}
+template<typename T>
+void f(ParamType param);
+\end{lstlisting}
+
+和如下的函数调用：
+
+\begin{lstlisting}
+f(expr); //使用表达式调用f
+\end{lstlisting}
+
+在f的函数调用中，编译器使用expr去推导T和ParamType的类型。当一个变量使用auto声明时，auto扮演了模板中T的角色，变量的类型说明符（specifier）则扮演了ParamType的角色。这里用以下的例子能够更好的描述这个情形：
+
+\begin{lstlisting}
+auto x ＝ 27；
+\end{lstlisting}
+
+这里x的类型说明符就是auto本身。从另一方面来讲，在这个声明中，
+
+\begin{lstlisting}
+const auto cx ＝ x;
+\end{lstlisting}
+
+的类型说明符是const auto。并且在这里，
+
+\begin{lstlisting}
+const auto& rx ＝ x;
+\end{lstlisting}
+
+的类型描述符是const auto\&。为了推导例子中x，cx和rx的类型，编译器会认为每个声明都是一个模板，并且按照模板的方式来初始化表达式：
+
+\begin{lstlisting}
+template<typename T>
+void func_for_x(T param); //推导x类型的概念模板（conceptual template）
+
+func_for_x(27); //概念调用：param的推导类型是x的类型
+
+template<typename T>
+void func_for_x(const T param); //推导cx类型的概念模板
+
+func_for_cx(x); //概念调用：param的推导类型是cx的类型
+
+template<typename T>
+void func_for_rx(const T& param); //推导rx类型的概念模板
+
+func_for_rx(x); //概念调用：param的推导类型是rx的类型
+\end{lstlisting}
+
+如我所说，除了一个例外外，auto的类型推导与模板的类型推导规则一样。
+
+条款1基于ParamType的特点、函数模板中param的类型描述符，将模板类型的推导分为3种情形。在使用auto的变量推导中，类型描述符取代了ParamType的位置，因此这里同样也有3种情形：
+
+\begin{itemize}
+\item{情形1：类型描述符是一个指针或引用，但不是一个通用引用。}
+\item{情形2：类型描述符是一个通用引用。}
+\item{情形3：类型描述符既不是一个指针，也不是一个引用。} 
+\end{itemize}
+
+我们已经看到了情形1和情形3：
+
+\begin{lstlisting}
+auto x = 27; //情形3，x不是指针，也不是引用。
+
+const auto cx ＝ x; //情形3，cx也不是。
+
+const auto& rx = x; //情形1，rx是一个非通用引用。
+\end{lstlisting}
+
+情形2与你期望的一样：
+
+\begin{lstlisting}
+auto&& uref1 = x; //x是一个int类型的左值表达式，所以uref1是int&
+
+auto&& uref2 = cx; //cx是一个const int类型的左值表达式，所以uref2是const int &
+
+auto&& uref3 = 27; //27是一个int类型的右值表达式，所以uref3是int&&
+\end{lstlisting}
+
+条款1总结了数组和函数如何退化为非引用类型指针的类型描述符。这种情形也在auto类型推断中发生了：
+
+\begin{lstlisting}
+const char name[] = "R. N. Briggs"; //name的类型是const char[13]
+
+auto arr1 = name; //arr1的类型是const char *
+
+auto& arr2 = name; //arr2的类型是const char &[13]
+
+void someFunc(int, double); //someFunc是一个void(int, double)类型的函数
+
+auto func1 = someFunc; //func1的类型是void(*)(int, double)
+
+auto& func2 = someFunc; //func2的类型是void(&)(int, double)
+\end{lstlisting}
+
+如你所见，auto类型推导与模板类型推导非常相似。它们就像是硬币的两边。
+
+除了一个例外。我们将会通过一个例子开始：你希望声明一个初值为27的int对象，C++98给了2种方法：
+
+\begin{lstlisting}
+int x1 = 27;
+int x2(27);
+\end{lstlisting}
+
+通过C++11中的同意初始化（Uniform Initialzation），加入了这些方法：
+
+\begin{lstlisting}
+int x3 = {27};
+int x4{27};
+\end{lstlisting}
+
+总共使用了4种语法，获得了同样的结果：一个初值为27的int对象。
+
+但如条款5中描述的那样，使用auto类型相较于使用固定类型声明变量有许多好处。因此使用auto替换上述例子中的int将会非常愉快的。简单的文本替换后，变成了如下代码：
+
+\begin{lstlisting}
+auto x1 = 27;
+auto x2(27);
+auto x3 = { 27 };
+auto x4{ 27 };
+\end{lstlisting}
+
+这些声明都能够通过编译，但是它们却并不代表相同的含义。前两个声明确实使用27声明了1个int类型的变量。然而后两个却是声明了一个拥有一个元素27的std::initializer\_list<int>类型的变量！
+
+\begin{lstlisting}
+auto x1 = 27; //类型是int，值是27
+auto x2(27); //同上
+auto x3 = { 27 }; //类型是std::initializer_list<int>，值是{27}
+auto x4{ 27 }; //同上
+\end{lstlisting}
+
+这种情形是源于auto的特殊类型推导规则。当一个auto声明的变量的初始化器（Initializer）放置在一对大括号中时，这个变量的推导类型是的std::initializer\_list。如果这个类型不能被推导（例如大括号中的值都是不同类型的），这段代码将会无法通过编译。
+
+\begin{lstlisting}
+auto x5 = {1, 2, 3.0}; //错误！不能为std::initializer_list<T>推导T
+\end{lstlisting}
+
+如注释所指出的那样，在这种情形中，类型推导失败了。但是理解在这个地方实际上发生了两种类型的类型推导是很重要的。一种源于auto的使用：x5的类型必须被推导。因为x5的初始化器在大括号中，所以x5必须被推断为std::initializer\_list。第二种则是，因为std::initializer\_list是一个模板，std::initializer\_list<T>的为某种类型的T实例化，这也意味着T的类型必须被推导。上述的类型推导是因为第二种：模板类型推导而失败的，因为大括号中的初始化器中的元素有多种类型。
+
+对于大括号初始化器的不同的处理方式是auto类型推导和模板类型推导唯一不同的地方。当auto声明的变量被大括号初始化器初始化时，推导出的类型是std::initializer\_list。但是如果相应的模板被传入一个相同的初始化器时，类型推导会失败，代码无法通过编译。
+
+\begin{lstlisting}
+auto x = {11, 23, 9} //x的类型是std::initializer_list<int>
+
+template<typename T>
+void f(T param); //与x声明等价的模板形参声明
+
+f({11, 23, 9}); //错误，无法为T推导类型
+\end{lstlisting}
+
+然而，当你指定形参的类型是std::initializer\_list<T>时，模板类型推导规则就会成功推导出T的类型：
+
+\begin{lstlisting}
+template<typename T>
+void f(std::initializer_list<T> initList);
+
+f({11, 23, 9}); 
+//T被推导为int,initList的类型是std::initializer_list<int>
+\end{lstlisting}
+
+所以auto和模板类型推导的唯一差别就是：auto假定大括号初始化器代表着std::initializer\_list，而模板类型则不同。
+
+你可能希望知道为什么auto类型推导对于大括号初始化器使用了特别的规则，但是模板类型推导没有。我也想知道，但是不幸的是，我没有找到一个方便的解释。因为规则就是规则，这意味着你在使用auto声明一个变量，并使用一个大括号初始化器时必须记住：推导出的类型一定是std::initializer\_list。如果你想更深入的使用统一的集合初始化时，你就更要牢记这一点。C++11中一个最经典的错误就是程序员意外的声明了一个std::initializer\_list类型的变量，但他们的本意却是想声明一个其他类型的变量。错误造成的主要原因是一些程序员只有当必要的时候，才使用大括号的初始化式进行初始化。（将会在条款7中详细讨论。）
+
+对于C++11来说，这已经是一个完整的故事了，但是对于C++14，故事还没有结束，C++14允许auto来表示一个函数的返回值的类型（见条款3），并且C++14的lambda表达式可以在参数的声明时使用auto。不管怎样，这些auto的使用，采用的都是模板类型推导的规则，而不是auto类型推导规则，这意味着，大括号的初始化式会造成类型推导的失败，所以一个带有auto返回类型的函数如果返回一个大括号的初始化式将不会通过编译。
+
+\begin{lstlisting}
+auto createInitList() 
+{
+	return {1, 2, 3}; //错误，不能够推导类型f{1, 2, 3}
+}
+\end{lstlisting}
+
+同样,规则也适用于当auto用于C++14的lambda的参数类型说明符时：
+
+\begin{lstlisting}
+std::vector<int> v;
+...
+
+auto resetV = 
+	[&V](const auto& newValue) { v = newValue; }; //C++14
+...
+
+resetV( {1, 2, 3} ); //错误，不能够推导类型f{1, 2, 3}
+\end{lstlisting}
+
+\begin{mdframed}
+请记住：
+\begin{itemize}
+\item{auto类型推导规则通常与模板类型推导相同，但是auto类型推导假定1个大括号初始化器代表着std::initializer\_list，而模板类型推导不然。}
+\item{当auto是一个函数的返回值类型或是一个lambda传递形参类型时，使用模板类型推导规则，而不是auto类型推导规则。} 
+\end{itemize}
+\end{mdframed}

@@ -1,0 +1,293 @@
+\section{条款1：理解模板类型推导}
+
+大多数复杂系统的用户都只关心系统所带来的功效，却并不关心它的工作原理。从这个层面来看，C++的模板推导是成功的。尽管大多数的程序员对类型推导的工作方式并不了解，但他们使用函数模版传递参数都获得了满意的结果。
+
+如果你也是这个群体的一部分，我将告诉你一个好消息和一个坏消息。好消息是模板的类型推导是现代C++中最引人注目功能之一：{\M auto}的基石。如果你对于C++98中的{\M auto}很熟悉，那么C++11中的{\M auto}对你来说也会很熟悉。坏消息是当模板类型推断在有{\M auto}的上下文中使用时，相对于其在其他情况下（简单模板类型中）的应用变得更加令人疑惑了。因此，理解{\M auto}所依赖的模板类型推导的原理是非常重要的。本条款涵盖了该方面你所需要了解的所有知识。
+
+如果你愿意忽略少量的伪代码，我们可以思考下面一个函数模板的例子：
+
+\begin{lstlisting}
+template<typename T>
+void f(ParamType param);
+\end{lstlisting}
+
+函数的调用形如：
+
+\begin{lstlisting}
+f(expr); //使用表达式调用f函数
+\end{lstlisting}
+
+在编译过程中，编译器使用\textit{expr}推导2个类型：一个是{\M T}另一个是\textit{ParamType}。这2个类型往往是不同的，因为\textit{ParamType}通常都会包含修饰符，如{\M const}或者是引用限定符。例如，如果模板是这样声明的：
+
+\begin{lstlisting}
+template<typename T>
+void f(const T& param); //ParamType是const T&类型
+\end{lstlisting}
+
+并且我们这样调用：
+
+\begin{lstlisting}
+int x = 0;
+
+f(x); //调用f，实参是int类型
+\end{lstlisting}
+
+{\M T}被推导为{\M int}类型，但\textit{ParamType}被推导为const int\&。
+
+人们通常希望{\M T}的类型推导和传入函数的参数类型是一致的，例如{\M T}的类型与\textit{expr}是相同的。在上述的例子中，就是这种情况：{\M x}是{\M int}类型，{\M T}被推导为{\M int}类型。但并不总是这样，{\M T}的类型推导不仅仅和\textit{expr}的类型有关，也和\textit{ParamType}的类型相关。下面有3个例子：
+
+\begin{itemize}
+\item{\textit{ParamType}是一个指针或者引用，但不是一个通用引用(Universal Reference)。（通用引用在条款24中描述，在这里，你只需要知道它存在，并且和左值引用、右值引用不同。）}
+\item{\textit{ParamType}是一个通用引用。}
+\item{\textit{ParamType}既不是指针，也不是引用。}
+\end{itemize}
+
+接下来我们会介绍3种类型推导的情形，每一个调用都会以我们的通用模板为基础：
+
+\begin{lstlisting}
+template<typename T>
+void f(ParamType param);
+
+f(expr); //从expr中推导T和ParamType的类型
+\end{lstlisting}
+
+\subsection*{情形1：\textit{ParamType}是一个指针或者引用，但不是一个通用引用}
+在这种情况下，类型推导是这样工作的：
+
+1. 如果\textit{expr}的类型是一个引用，忽略引用的符号。
+
+2. 然后模式匹配expr的类型来决定ParamType的类型从而决定T的类型
+
+例如，如果这是我们的模板：
+\begin{lstlisting}
+template<typename T>
+void f(T& param); //param是一个引用
+\end{lstlisting}
+然后我们有如下变量声明：
+\begin{lstlisting}
+int x = 27; //x是int类型
+const int cx = x; //cx是const int类型
+const int& rx = x; //rx是x的常量引用
+\end{lstlisting}
+
+则param和T的类型推导如下：
+\begin{lstlisting}
+f(x); //T是int，param的类型是int &
+
+f(cx); //T是const int，param的类型是const int&
+
+f(rx); //T是const int，param的类型是const int &
+\end{lstlisting}
+
+在第二个和第三个调用中，注意由于cx和rx是常量类型，T被推导为const int，因此产生了const int\&类型的形参。这对于调用者来说非常重要。当他们传递一个const对象给一个引用形参时，他们希望这个对象仍是不可修改的，例如：形参是对常量的引用。这也是为什么传递一个const对象给一个使用T\&作为形参的模板是安全的：对象的常量性（constness）被推导为了T类型的一部分。
+
+在第三个例子中，注意尽管rx的类型是一个引用，T仍被推导为了一个非引用类型。这是因为rx的引用性（reference-ness）在类型推导的过程中被忽略了。
+
+这些例子中使用的都是左值引用形参，类型推导同样以相同的方式能够作用于右值引用形参。当然，只有右值的实参可能会被传递给右值引用的形参，但是这对类型推断没有什么影响。
+
+如果我们把f的形参由T\&改为const T\&，就会发生一些变化，但也并不令人惊讶。cx和rx的常量性依然被保留，但是因为我们已经假定param的是一个对常量的引用，所以const不再是T类型的一部分了。
+\begin{lstlisting}
+template<typename T>
+void f(const T& param); //param现在是一个常量引用
+
+int x = 27;
+const int cx = x;
+const int &rx = x;
+
+f(x); //T是int，param的类型是const T&
+
+f(cx); //T是int，param的类型是const T&
+
+f(rx); //T是int，param的类型是const T&
+\end{lstlisting}
+同样，rx的引用性在类型推导的过程中被忽略。
+
+如果param是一个指针（或是指向const的指针）而不是一个引用，规则并没有本质上改变：
+
+\begin{lstlisting}
+template<typename T>
+void f(T* param); //param现在是一个指针
+
+int x = 27;
+const int *px = &x; //px是一个将x视作const int的指针
+
+f(&x); //T是int，param的类型是int *
+f(px); //T是const int，param的类型是const int *
+\end{lstlisting}
+现在，你可能发现你自己在不断的打哈欠和点头，因为C++的类型推导在引用和指针形参上工作得如此自然。每件事情都是如此清晰，与你希望的类型推导系统完全一样。
+
+\subsection*{情形2：\textit{ParamType}是一个通用引用}
+当使用了通用引用后，事情就变得不是那么清楚了。形参似乎被声明为一个一个右值引用（例如：函数模板中的形参被声明为T\&\&），但是它们在传入一个左值实参后的表现却完全不同。完整的故事会在条款24中描述，这里有一个概要的版本。
+
+\begin{itemize}
+\item{如果expr是一个左值表达式，那么T和ParamType都被会推导为左值引用。这是非常不同寻常的。首先这是唯一一种情形：T被推导为一个引用。第二，尽管ParamType被声明为一个右值引用，但是其推导的类型却是一个左值引用。}
+\item{如果expr是一个右值表达式，则按照情形1的方式处理。}
+\end{itemize}
+
+例如：
+\begin{lstlisting}
+template<typename T>
+void f(T&& param); //param现在是一个通用引用
+
+int x = 27; //x是int类型
+const int cx = x; //cx是const int类型
+const int& rx = x; //rx是x的常量引用
+
+f(x); //x是一个左值表达式，因此T是一个int&，param也是int&
+f(px); //px是一个左值表达式，因此T是const int，param是const int &
+f(rx); //rx是一个左值表达式，因此T是const int，param是const int &
+f(27); //27是一个右值表达式，因此T是一个int，param是int &&
+\end{lstlisting}
+
+条款24清楚的解释了这些情形发生的原因。关键点在于通用引用的类型推导规则取决于形参是左值引用还是右值引用。当使用通用引用时，类型推导规则会区分左值实参和右值实参，而这从来都不会发生在非通用引用上。
+
+(译者注：以上对左值引用、右值引用、通用引用不太明白的部分可以看\\http://www.cnblogs.com/qicosmos/p/3369940.html学习)
+
+\subsection*{情形3：\textit{ParamType}既不是指针，也不是引用}
+当ParamType既不是一个指针，也不是一个引用时，我们使用值传递的方式：
+\begin{lstlisting}
+template<typename T>
+void f(T param); //param通过值传递
+\end{lstlisting}
+这意味着param将会成为传递进来的实参的一份拷贝---一个全新的对象。事实上，param成为一个全新的对象指导T如何从expr中推导。
+
+1. 与之前一样，如果expr是一个引用，引用的部分会被忽略。
+2. 在忽略了expr的引用部分后，如果expr是一个const，同样也会被忽略。如果它是volatile，也会被忽略。（volatile对象并不常用，它们通常仅用于设备驱动程序的开发。详细内容可见条款40。）
+
+因此：
+\begin{lstlisting}
+int x = 27; //x是int类型
+const int cx = x; //cx是const int类型
+const int& rx = x; //rx是x的常量引用
+
+f(x); //T和paramdoiu是int
+f(cx); //T和param都是int
+f(rx); //T和param都是int
+\end{lstlisting}
+
+注意尽管cx和rx都是静态变量，但param不是。这是讲得通的，因为param是一个完全独立于cx和rx的对象---它们之一的一份拷贝。事实上，cx和rx不可被修改不会对param产生任何影响。这也是为什么说expr的静态性在类型推导时被忽略：因为expr不可被修改并不意味着它的拷贝也不可被修改。
+
+意识到当使用值传递方式时，const（volatile）会被忽略是很重要的。我们看到，对于形参是静态量引用或指针，在类型推导时expr的静态性被保留。但是当expr是一个指向const对象的const指针，而且expr是通过值传递的方式时：
+
+\begin{lstlisting}
+template<typename T>
+void f(T param); //param仍通过值传递
+
+const char* const ptr = "Fun with pointers"; //ptr是一个指向const对象的const指针
+
+f(ptr); //实参类型是const char *const
+\end{lstlisting}
+
+在这里，最右边的const表明了指针是静态的：意味着ptr不能再次指向别的位置，亦或是空。（左边的const表明ptr所指向的字符串不可能被修改。）当ptr传递给f时，指针按位拷贝到param中。同样的，指针自身也是通过值传递。按照使用值传递方式的类型推导规则，ptr的静态性将被忽略，param的类型推导为const char*，一个指向不可被修改的字符串的指针。在类型推导的过程中，ptr所指向内容的静态性被保留，但是ptr自身的静态性在拷贝并创建新指针的过程中丢失了。
+
+\subsection*{数组实参}
+上面的内容已经涵盖了模板类型推导的主流部分，但还有一些少见的情况值得我们了解。数组类型何指针类型是不同的，尽管一些时候它们是可以交换的。这个谬误主要来源于：在很多语境中，一个数组会退化成其中第一个元素的指针。这种退化允许下面的代码能够通过编译：
+\begin{lstlisting}
+const char name[] = "J.P.Briggs"; //name的类型是const char[13]
+
+const char *prtToName = name; //数组退化成指针
+\end{lstlisting}
+
+在这里，const char*的指针ptrToName使用name初始化，这2个类型（const char *和const char[13]）是不同的，但是因为数组-指针退化规则，这段代码可以通过编译。
+
+但当一个数组使用值传递方式传给一个模板呢？那会发生什么？
+
+\begin{lstlisting}
+template<typename T>
+void f(T param); //param通过值传递
+
+f(name); //此时T和param会被推导为什么类型？
+\end{lstlisting}
+
+一开始我们观察到，函数没有使用数组作为一个形参的，但是下面的语法确实合法的：
+
+\begin{lstlisting}
+void myFunc(int param[]);
+\end{lstlisting}
+
+但是在这里数组声明被视作一个指针的声明，一位置myFunc的声明实际上等价于：
+
+\begin{lstlisting}
+void myFunc(int *param); //与上面相同的函数
+\end{lstlisting}
+
+这种数组与指针形参的等价从C中传递到了C++，产生了数组和指针是相同的这种错觉。
+
+因为数组形参声明被视作指针形参，当数组以值传递方式入一个函数模板时，其被推导为指针类型。这一位置当调用模板f时，它的类型形参T会被推导为const char *：
+
+\begin{lstlisting}
+f(name); //name是一个数组，但是T推导为const char*
+\end{lstlisting}
+
+这样现在就出现了一个诡计（curve ball）。尽管函数不能真正的声明其参数是数组类型的，但是它们能够声明参数是数组的引用！这样如果我们修改模板f，令其通过引用接收实参，
+
+\begin{lstlisting}
+template<typename T>
+void f(T& param); //param通过引用传递
+\end{lstlisting}
+
+然后我们传入一个数组，
+
+\begin{lstlisting}
+f(name); //传递数组给f
+\end{lstlisting}
+
+T的实际类型被推导为一个数组！这种类型将会包括数组的大小，在这个例子中，T的类型是const char[13]，而且f的形参类型是const char (\&)[13]。是的，这个语法看起来是有毒的，但是知道这个会让你获得其他人所得不到的罕见分数（一些英文幽默）。
+
+有趣的是，声明一个数组的引用能够创建一个能推导出数组元素个数的模板：
+
+\begin{lstlisting}
+//在编译时期间返回数组的大小
+template<typename T, std::size_t N>
+constexpr std::size_t arraySize(T (&)[N]) noexcept
+{
+	return N;
+}
+\end{lstlisting}
+
+如条款15所描述的，声明一个函数是constexpr的将使其结果在编译期间可用。这让这种用法变得可能：声明一个与之前创建的数组一样大的数组。
+
+\begin{lstlisting}
+int keyVals[] = {1, 3, 7, 9, 11, 22, 35} //keyVals包括7个元素
+
+int mappedVals[arraySize(coevals)]; //mappedVals也有7个元素。
+\end{lstlisting}
+
+当然，作为一个现代C++的开发人员，你当然可以用std::array构造一个数组：
+
+\begin{lstlisting}
+std::array<int, arraySize(keyVals)> mappedVals; //mappedVals的大小是7
+\end{lstlisting}
+
+至于被声明为noexcept的函数arraySize，这将帮助编译器生成更好的代码，详见条款14。
+
+\subsection*{函数实参}
+数组类型不是C++中唯一能被退化为指针的类型，函数类型也能够退化为指针类型，我们讨论的任何一个关于类型推导的规则和对数组相关的情形对于函数的类型推导也适用，函数类型会退化为函数的指针，因此：
+
+\begin{lstlisting}
+void someFunc(int, double) //一个类型是void(int, double)的函数
+
+template<typename T>
+void f1(T param); //值传递方式
+
+template<typename T>
+void f2(T& param); //引用传递方式
+
+f1(someFunc); //param被推导为一个函数指针，类型是void(*)(int, double)
+
+f1(someFunc); //param被推导为一个函数引用，类型是void(&)(int, double)
+\end{lstlisting}
+
+在实际情况中很难有什么区别，但是当你了解到了数组-指针的退化时，你也同样应该了解到函数-指针的退化。
+
+所以你现在明白了：auto相关的模板类型推导规则。如我所说，在一开始它们大多都非常简单直接。唯一需要特殊处理的只有在使用通用引用时，左值表达式会有特别的处理。然而数组和函数的退化规则使得规则变得更加混乱。有时，你可能只是简单的抓住你的编译器，”告诉我，你推导出的类型是什么“，这时候，你可以看看条款4，因为条款4就是讲述如何劝诱你的编译器这么做的。
+
+\begin{mdframed}
+请记住：
+\begin{itemize}
+\item{在模板类型推导时，对引用实参会被视作非引用类型的。} 
+\item{当推导通用引用的形参，左值实参需要特殊的处理。}
+\item{当推导使用值传递方式的形参时，const和volatile类型的实参会被忽略掉这两个属性。}
+\item{在模板类型推导时，数组和函数实参中会退化为指针类型，除非它们被实例化为引用。}
+\end{itemize}
+\end{mdframed}
