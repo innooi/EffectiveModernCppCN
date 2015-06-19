@@ -1,0 +1,158 @@
+\section{条款6：当auto无法推导出正确的类型时，使用明确的类型初始化句式}
+
+条款5解释了使用auto声明变量类型相比明确声明变量类型所带来的一些技术优势，但有些时候auto的类型推导并不总是如你所愿。举个例子，假设我有一个函数接收Widget作为参数然后返回std::vector<bool>，其中每一个bool表示Widget是否拥有某种特性：
+
+\begin{lstlisting}
+std::vector<bool> features(const Widget& w);
+\end{lstlisting}
+
+进一步假设容器中的第5个元素表示Widget是否拥有高优先级。因此我们可以写出这样的代码：
+
+\begin{lstlisting}
+Widget w;
+...
+
+bool highPriority = features(w)[5]; // 是否拥有高优先级？
+...
+
+processWidget(w, highPriority);     // 根据优先级级别来处理Widget w
+\end{lstlisting}
+
+这段代码并没有任何错误，可以正常工作。但如果我们做出一个看似无害的修改，把highPriority的类型声明从bool改成auto：
+
+\begin{lstlisting}
+auto highPriority = features(w)[5]; // 是否拥有高优先级？
+\end{lstlisting}
+
+那么情况就完全变了。所有的代码能够继续通过编译，但是它的行为将变得不可预测：
+
+\begin{lstlisting}
+processWidget(w, highPriority);     // 未定义行为！
+\end{lstlisting}
+
+正如注释指出的那样，现在调用processWidget将造成未定义行为。为什么会这样？答案可能会让你有些惊讶：在使用auto的代码中，highPriority的类型不再是bool了。尽管std::vector<bool>在概念上拥有bool变量，但是std::vector<bool>的operator[]并不返回这个容器中元素的引用（除了bool，其他的std::vector::operator[]都返回元素的引用）。取而代之的是返回一个std::vector<bool>::reference对象。（它是std::vector<bool>的嵌套类）
+
+之所以存在std::vector<bool>::reference，是因为std::vector<bool>需要指定它作为bool的打包形式。如果改用一个bit表示bool，std::vector<bool>的operator[]将存在一个明显的问题：对于任意std::vector<T>，operator[]理应返回一个T\&，但C++并不支持对bit的引用。既然不能返回一个bool\&，于是std::vector<bool>的operator[]便返回一个看起来像bool的对象。为了实现这个目的，std::vector<bool>::reference必须能够支持bool\&能够出现的每个上下文。因此在std::vector<bool>::reference的特性中，包含了对bool的隐式转换来完成这项工作。（是bool，而不是bool\&。如果要解释std::vec
+tor<bool>::reference模拟bool\&的行为用到的所有技术将超出了本书的范围，所以我只是简单的指出隐式转换是是其中的一部分）
+
+记住这个特性后，我们再来看看原始代码的这部分：
+
+\begin{lstlisting}
+bool highPriority = features(w)[5]; // 明确定义了highPriority的类型
+\end{lstlisting}
+
+在这里，函数features返回了一个std::vector<bool>对象，然后再对它调用operator[]。而operator[]返回的std::vector<bool>::reference通过隐式转换为bool来初始化highPriority。所以正如我们的预期，highPriority存储了features返回的std::vector<bool>中的第五个元素。
+
+与之相反，如果使用auto来声明highPriority：
+
+\begin{lstlisting}
+auto highPriority = features(w)[5]; // 编译器推导highPriority的类型
+\end{lstlisting}
+
+
+同样的，函数features将返回一个std::vector<bool>对象，然后再对它调用operator[]。但发生变化的是，highPriority将会被编译器推导成一个std::vector<bool>::reference对象，因此highPriority的值根本就不是std::vector<bool>中的第五个元素。
+
+highPriority的值取决于std::vector<bool>::reference的具体实现。一种实现方式是包括一个指向机器字的指针，加上一个偏移位。结合机器字和偏移位进行偏移就能得到判别值。如果std::vector<bool>::reference正如这样实现，那么我们来考虑highPriority的初始化到底意味着什么。
+
+对函数features的调用将返回一个临时的std::vector<bool>对象。为了讨论方便，我们把这个没有名字的对象称为temp。在temp上调用operator[]，将会返回一个拥有机器字指针和偏移位的std::vector<bool>::reference对象。而highPriority正是这个对象的拷贝，并且指针指向了与temp[5]相同的机器字。当这个语句执行完后，临时变量temp将会被销毁。因此highPriority将包含一个悬空指针，这是导致函数processWidget的产生未定义行为的根本原因：
+
+\begin{lstlisting}
+processWidget(w, highPriority);     // 未定义行为！
+                                    // highPriority包含悬空指针
+\end{lstlisting}
+
+std::vector<bool>::reference是一个代理类的例子：代理类是一种为了模仿和增强其他类的行为而创造的类。代理类有多种用途，std::vector<bool>::reference的作用就是把std::vector<bool>的operator[]返回值模拟成bool。再例如，标准库中的智能指针就是在指针的基础上扩充了资源管理的代理类。事实上，代理类的应用几乎无处不在，而“代理”也是设计模式领域经久不衰的模式之一。
+
+有些代理类被设计成用户透明，例如std::shared\_ptr和std::unique\_ptr。其他的代理类则被设计成或多或少程度上的不可见，std::vector<bool>::reference就是一个不可见代理的例子，同样的还有std::bitset::reference。
+
+在C++库中还有一部分代理类使用了被称为表达式模板的技术，这些库的目的通常是为了提升数值运算的效率。例如，假如有一个类Matrix和几个Matrix对象m1、m2、m3、m4，那么表达式：
+
+\begin{lstlisting}
+Matrix sum = m1 + m2 + m3 + m4;
+\end{lstlisting}
+
+在operator+中使用代理类相比直接返回运算结果能够提升极大的效率，因为operator+返回类似于Sum<Matrix, Matrix>的代理类相比直接返回Matrix对象的开销更小。正如std::vector<bool>::reference和bool的关系，Sum<Matrix, Matrix>能够通过隐式转换成为Matrix，因此表达式中的等号右边能够给sum准确的赋值。（这个赋值的对象通常会对整个运算式编码，最终成为Sum<Sum<Sum<Matrix, Matrix>,Matrix>, Matrix>的形式，这个结果也应该对用户不可见）
+
+作为基本规则，不可见的代理类通常会造成auto类型推导上的问题。这些类一般情况下会在语句执行完后当场销毁，因此定义变量来存储和使用这样的代理类对象违反了基本的库设计前提。这也是为什么std::vector<bool>::reference会造成未定义行为的根本原因。
+
+因而你肯定特别想避免这类语句：
+
+\begin{lstlisting}
+auto someVar = expression of "invisible" proxy class type;
+                                    // 生成不可见代理类对象的表达式
+\end{lstlisting}
+
+但是你又怎能轻易识别出代码是否使用了这样的代理类呢？在软件开发中使用代理类的目的并不是向程序员宣扬它们的存在，因为它们至少在概念上应该是不可见的。但是如果你一旦发现了这样的代理类，你真的想要扔掉auto，以及我们在条款5中展示的那些优势吗？
+
+首先让我们来看看你是怎样发现代理类的。尽管不可见的代理类被设计成不会被程序员在日常使用中发现，但是库代码通常会在文档中标记出它们的存在。如果你对库的基本设计原则越熟悉，那么你就越不可能被库中的代理类所蒙蔽。
+
+另一方面，头文件也填补了文档的缺失。源代码中的代理类不可能被完全封装，它们总是会暴露在函数调用的返回值上，所以函数签名通常能够反映它们的存在。这是std::vector<bool>::operator[]的一个实现例子：
+
+\begin{lstlisting}
+namespace std {                     // 来自C++标准库
+    template <class Allocator>
+    class vector<bool, Allocator> {
+    public:
+        ...
+        class reference { ... };
+        reference operator[](size_type n);
+        ...
+    };
+}
+\end{lstlisting}
+
+如果你知道std::vector<T>的operator[]通常会返回T\&，那么这个不常见的返回值就暴露了它正在使用代理类，留意你正在使用的接口通常能够揭露这些代理类的存在。
+
+实际上，很多开发者发现代理类的存在，基本上是由于试图追踪神秘的编译错误或者调试单元测试的意外结果。不管你是怎么发现它们的，一旦auto注定会将类型错误的推导成代理类，而非这个对象本身，那么你就应该考虑放弃使用auto。在这个问题上，auto并不是罪魁祸首，真正错误的是auto没有推导出我们想要的类型。所以解决方案应该是强制性的进行正确的类型推导，这种方法我称之为明确的类型初始化句式。
+
+明确的类型初始化句式指的是用auto声明一个变量，然后把初始化表达式转换成你想要auto推倒出的类型。举例来说，用它给highPriority赋值成bool:
+
+\begin{lstlisting}
+auto highPriority = static_cast<bool>(features(w)[5]);
+\end{lstlisting}
+
+这里features(w)[5]依然返回一个std::vector<bool>::reference对象，但是类型转换将表达式转型成了bool，因此auto能够将highPriority的类型推导成bool。在运行过程中，std::vector<bool>::operator[]将返回的std::vector<bool>::reference对象转换成了支持的类型bool。而在这个转换过程中，对std::vector<bool>::reference的解引用是合法的，这样就避免了我们先前的未定义行为。最终highPriority就被正确的赋值为数组中的第5个元素，类型为bool。
+
+至于Matrix这个例子，明确的类型初始化句式应该是这样：
+
+\begin{lstlisting}
+auto sum = static_cast<Matrix>(m1 + m2 + m3 + m4);
+\end{lstlisting}
+
+明确的类型初始化句式的应用并不仅仅局限于代理类，它也适用于去强调声明变量的类型与初始化表达式的返回值类型不同。假如你有一个计算误差值的函数：
+
+\begin{lstlisting}
+double calcEpsilon();               // 返回误差值
+\end{lstlisting}
+
+函数calcEpsilon的返回值类型为double。假如你的程序能够接受精度损失，并且使用float相比double是更好的选择，那么你可能会用float来存储calcEpsilon的结果：
+
+\begin{lstlisting}
+float ep = calcEpsilon();           // float隐式转换成double
+\end{lstlisting}
+
+但是这样的代码很难说明程序员的做法是故意丢弃了函数返回值的精度。不同的是，明确的类型初始化句式可以这样写：
+
+\begin{lstlisting}
+auto ep = static_cast<float>(calcEpsilon());
+\end{lstlisting}
+
+在相同的情况下，这种写法个更能够说明是故意丢弃精度的做法。假如你需要计算随机访问容器（例如std::vector、std::deque或std::array）中某个元素的序号，并且给定了一个0.0到1.0之间的double值来表示这个元素在容器中的位置比例。（0.5表示在容器正中间）进一步假设计算的结果会被赋值给一个int，来表示元素的序号。如果容器的名字为c，double值为d，那么计算序号的语句可以这样写：
+
+\begin{lstlisting}
+int index = d * c.size();
+\end{lstlisting}
+
+但是这种写法隐藏了你想要把double转型成int的本意，然而明确的类型初始化句式让整件事变得明朗：
+
+\begin{lstlisting}
+auto index = static_cast<int>(d * c.size());
+\end{lstlisting}
+
+\begin{mdframed}
+请记住：
+\begin{itemize}
+\item{不可见的代理类会导致auto给初始化表达式推导出错误的类型。}
+\item{明确的类型初始化句式能够让auto推导出你想要的类型。} 
+\end{itemize}
+\end{mdframed}
