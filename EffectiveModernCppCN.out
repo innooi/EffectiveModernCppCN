@@ -1,3 +1,10 @@
 \BOOKMARK [0][-]{chapter.1}{类型推导}{}% 1
 \BOOKMARK [1][-]{section.1.1}{条款1：理解模板类型推导}{chapter.1}% 2
 \BOOKMARK [1][-]{section.1.2}{条款2：理解auto类型推导}{chapter.1}% 3
+\BOOKMARK [1][-]{section.1.3}{条款3：理解decltype}{chapter.1}% 4
+\BOOKMARK [1][-]{section.1.4}{条款4：掌握如何查看推导类型}{chapter.1}% 5
+\BOOKMARK [2][-]{subsection.1.4.1}{IDE编辑器}{section.1.4}% 6
+\BOOKMARK [2][-]{subsection.1.4.2}{编译器诊断}{section.1.4}% 7
+\BOOKMARK [2][-]{subsection.1.4.3}{运行时输出}{section.1.4}% 8
+\BOOKMARK [0][-]{chapter.2}{auto}{}% 9
+\BOOKMARK [1][-]{section.2.1}{条款6：当auto无法推导出正确的类型时，使用明确的类型初始化句式}{chapter.2}% 10

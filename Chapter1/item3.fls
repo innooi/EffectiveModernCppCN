@@ -1,0 +1,6 @@
+PWD /Users/shengni/Documents/EffectiveModernCppCN/Chapter1
+INPUT /usr/local/texlive/2014/texmf.cnf
+INPUT /usr/local/texlive/2014/texmf-dist/web2c/texmf.cnf
+INPUT /usr/local/texlive/2014/texmf-var/web2c/pdftex/pdflatex.fmt
+INPUT item3.tex
+OUTPUT item3.log

@@ -1,0 +1,87 @@
+\section{条款4：掌握如何查看推导类型}
+
+如何选择合适的、用于查看类型推导结果的工具，取决于你在软件开发过程中所处于的阶段。我们将探讨其中的三种可能性：第一种是在编辑代码时获取类型推导信息，第二种是编译代码时获取，最后一种是运行时过程中获取。
+
+\subsection{IDE编辑器}
+当你将你的光标放置在实体的附件时，IDE中的编辑器往往能够标注出代码中实体的类型（例如：变量，形参，函数等）。以下面的代码为例；
+
+\begin{lstlisting}
+const int theAnswer = 42;
+
+auto x = theAnswer;
+auto y = &theAndwer;
+\end{lstlisting}
+
+一个IDE的编辑器将会显示x的推导类型是int，而y的推导类型是const int*。
+
+此时此刻，你的代码实际上也处于某种已编译的状态，因为这样IDE才能够通过编译器获取这些信息。如果编译器不能够在此时分析得到足够的类型推导信息，那么IDE也不能够告诉你类型推导的结果。
+
+对于像int这样的简单类型，IDE通常能够获得正确的结果。然而，我们很快就会发现，当使用了复杂类型时，IDE所显示的结果可能就不会有什么作用了。
+
+\subsection{编译器诊断}
+
+利用某种导致编译错误的手段，是一个高效的使用编译器获取类型推导结果的方法。问题的错误提示信息实际上就会暗示是什么类型所导致的。
+
+举个例子，我们想要推导前面例子中x和y的类型。首先声明一个我们并没有定义的模板类，就像这样：
+
+\begin{lstlisting}
+template<typename T> //仅为TD声明
+class TD;	           //TD的意思是类型显示器
+\end{lstlisting}
+
+当尝试实例化这个模板时，编译器会引发一个错误。因为现在并没有用于实例化的模板定义。为了查看x和y的类型，于是使用它们的类型实例化TD：
+
+\begin{lstlisting}
+TD<decltype(x)> xType; //显示的错误将会包括x和y的类型
+TD<decltype(y)> yType;
+\end{lstlisting}
+
+我使用了形如vaiableNameType这样的变量名，因为这样所引出的错误消息将引导我找到想要获取的的信息。对于上面的代码，我的一种编译器生成了如下的诊断信息：
+
+\begin{lstlisting}
+error: aggregate 'TD<int> xType' has incomplete type and cannot be defined
+error: aggregate 'TD<const int *> yType' has incomplete type and cannot be defined
+\end{lstlisting}
+
+另一种编译器使用另一种形式显示了同样的信息：
+
+\begin{lstlisting}
+error: 'xType' use undefined class 'TD<int>'
+error: 'yType' use undefined class 'TD<const int *>'
+\end{lstlisting}
+
+仅仅只是不同的格式。通过这种技术，我所测试的所有编译器都产生我所需要的类型信息。
+
+\subsection{运行时输出}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

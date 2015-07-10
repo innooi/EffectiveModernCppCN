@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.99991 (TeX Live 2014) (preloaded format=xelatex 2015.3.28)  14 JUN 2015 16:36
+This is XeTeX, Version 3.14159265-2.6-0.99991 (TeX Live 2014) (preloaded format=xelatex 2015.3.28)  23 JUN 2015 17:09
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1192,36 +1192,42 @@ File: xeCJK.cfg 2014/12/26 v3.3.0 Configuration file for xeCJK package
 *************************************************
 * fontspec warning: "script-not-exist"
 * 
-* Font 'STSong' does not contain script 'CJK'.
+* Font 'STHeitiSC-Light' does not contain script 'CJK'.
 *************************************************
-\g__fontspec_family_STSong_int=\count162
+\g__fontspec_family_STHeitiSC-Light_int=\count162
 .................................................
 . fontspec info: "no-font-shape"
 . 
-. Could not resolve font STSong/BI (it probably doesn't exist).
-.................................................
-.................................................
-. fontspec info: "no-font-shape"
-. 
-. Could not resolve font STSong/B (it probably doesn't exist).
-.................................................
-.................................................
-. fontspec info: "no-font-shape"
-. 
-. Could not resolve font STSong/I (it probably doesn't exist).
+. Could not resolve font STHeitiSC-Light/I (it probably doesn't exist).
 .................................................
 .................................................
 . fontspec info: "defining-font"
 . 
-. Font family 'STSong(0)' created for font 'STSong' with options
-. [Script={CJK}].
+. Font family 'STHeitiSC-Light(0)' created for font 'STHeitiSC-Light' with
+. options [Script={CJK}].
 . 
 . This font family consists of the following shapes:
 . 
 . * 'normal' with NFSS spec.:
-. <->"STSong/OT:"
+. <->"STHeitiSC-Light/OT:"
 . 
 . * 'small caps' with NFSS spec.:
+. 
+. and font adjustment code:
+. 
+. 
+. * 'bold' with NFSS spec.:
+. <->"STHeitiSC-Light/B/OT:"
+. 
+. * 'bold small caps' with NFSS spec.:
+. 
+. and font adjustment code:
+. 
+. 
+. * 'bold italic' with NFSS spec.:
+. <->"STHeitiSC-Light/BI/OT:"
+. 
+. * 'bold small caps' with NFSS spec.:
 . 
 . and font adjustment code:
 . 
@@ -1439,10 +1445,6 @@ File: se-ascii-print.def 2011/12/02 v1.10 stringenc: Printable ASCII characters
 ] [2
 
 ] (./EffectiveModernCppCN.toc
-
-LaTeX Font Warning: Font shape `EU1/STSong(0)/bx/n' undefined
-(Font)              using `EU1/STSong(0)/m/n' instead on input line 1.
-
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <10> on input line 2.
 LaTeX Font Info:    External font `lmex10' loaded for size
@@ -1459,33 +1461,60 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 Chapter 1.
 (./Chapter1/item1.tex [5]
 
-LaTeX Font Warning: Font shape `EU1/STSong(0)/m/sl' undefined
-(Font)              using `EU1/STSong(0)/m/n' instead on input line 88.
+LaTeX Font Warning: Font shape `EU1/STHeitiSC-Light(0)/m/sl' undefined
+(Font)              using `EU1/STHeitiSC-Light(0)/m/n' instead on input line 88
+.
 
 [6] [7] [8] [9]
 Package mdframed Info: mdframed works in twoside mode on input line 286.
 ) (./Chapter1/item2.tex [10] [11] [12] [13]
 Package mdframed Info: mdframed works in twoside mode on input line 195.
-))
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 50.
- [14]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 50.
+)
+(./Chapter1/item3.tex [14] [15] [16]
+Package mdframed Info: mdframed works in twoside mode on input line 198.
+ [17]
+Package mdframed Info: Not enough space on this page on input line 204.
+) (./Chapter1/item4.tex [18]))
+(./Chapter2/chapter2.tex [19] [20
 
-(./EffectiveModernCppCN.aux)
-Package atveryend Info: Empty hook `AtVeryEndDocument' on input line 50.
-Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 50.
+]
+Chapter 2.
+(./Chapter2/item6.tex [21] [22]
+Overfull \hbox (3.69711pt too wide) in paragraph at lines 89--90
+\EU1/STHeitiSC-Light(0)/m/n/10 函 数 调 用 的 返 回 值 上，|  所 以 函 数 签 名 通 常 能 够 反 映 它 们
+ 的 存 在。|  这 是 \EU1/lmr/m/n/10 std::vector<bool>::operator[]
+ []
+
+
+Overfull \hbox (50.1071pt too wide) in paragraph at lines 114--115
+\EU1/STHeitiSC-Light(0)/m/n/10 型 成 了 \EU1/lmr/m/n/10 bool\EU1/STHeitiSC-Light(0
+)/m/n/10 ，|  因 此 \EU1/lmr/m/n/10 auto \EU1/STHeitiSC-Light(0)/m/n/10 能 够 将 \EU1
+/lmr/m/n/10 highPriority \EU1/STHeitiSC-Light(0)/m/n/10 的 类 型 推 导 成 \EU1/lmr/m/
+n/10 bool\EU1/STHeitiSC-Light(0)/m/n/10 。|  在 运 行 过 程 中，| \EU1/lmr/m/n/10 std::
+vector<bool>::operator[]
+ []
+
+[23]
+Package mdframed Info: mdframed works in twoside mode on input line 153.
+))
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 51.
+ [24]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 51.
+ (./EffectiveModernCppCN.aux)
+Package atveryend Info: Empty hook `AtVeryEndDocument' on input line 51.
+Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 51.
 
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  ) 
 Here is how much of TeX's memory you used:
- 26647 strings out of 493724
- 510529 string characters out of 6145899
- 792895 words of memory out of 5000000
- 29702 multiletter control sequences out of 15000+600000
- 26051 words of font info for 64 fonts, out of 8000000 for 9000
+ 26828 strings out of 493724
+ 516284 string characters out of 6145899
+ 793022 words of memory out of 5000000
+ 29869 multiletter control sequences out of 15000+600000
+ 26059 words of font info for 65 fonts, out of 8000000 for 9000
  1328 hyphenation exceptions out of 8191
  52i,6n,69p,10428b,1045s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on EffectiveModernCppCN.pdf (14 pages).
+Output written on EffectiveModernCppCN.pdf (24 pages).
