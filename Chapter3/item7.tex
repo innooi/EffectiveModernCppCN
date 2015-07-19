@@ -1,0 +1,317 @@
+\section{条款7：在创造对象时区分()和\{\}}
+
+根据开发者的不同视角，C++11内置的对象初始化语择要么是一个多选的尴尬，要么是一个令人迷惑的灾难。作为通用的规则，我们可以通过指定等号、小括号和大括号来进行初始化赋值。
+
+\begin{lstlisting}
+int x(0);							// 用小括号初始化
+
+int y = 0;							// 用等号初始化
+
+int z{ 0 };							// 用大括号初始化
+\end{lstlisting}
+
+甚至在很多情况下，我们也用以同时使用等号和大括号进行赋值：
+
+\begin{lstlisting}
+int z = { 0 };						// 用等号和大括号初始化
+\end{lstlisting}
+
+在本条款剩下的内容里，我会忽略掉等号加大括号的语法，因为C++通常将它视为只有大括号的语法。
+
+那些认为C++11初始化语法令人迷惑的人会指出，使用等号进行初始化经常会误导C++新手以为发生了赋值，而实际上并非如此。对于像int这种内置类型，它们只有学术上的区别；但是对于用户自定义的类型，区分等号是否会造成赋值就非常重要，因为它们是调用两个不同的函数。
+
+\begin{lstlisting}
+Widget w1; 							// 调用默认构造函数
+
+Widget w2 = w1; 					// 不是赋值，调用拷贝构造函数
+
+w1 = w2; 							// 是赋值，调用=操作符
+\end{lstlisting}
+
+另外在有些情况下，C++98的初始化语法并不能够提供理想的初始化。例如不能直接定义一个STL容器初始就包含一些元素（比如1、3和5）。
+
+为了解决多种初始化语法的困扰，同时提供所有初始化情景的支持，C++11引入了统一初始化语法：这种语法能够被应用在所有的地方，至少在概念上如此。因为它是基于大括号的语法，因此我更倾向于称呼它为大括号初始化。在概念上它是统一初始化，但是在形式上是大括号初始化。
+
+使用大括号初始化能够让你写出之前不能实现的表达式，比如指定带有初始化值的容器：
+
+\begin{lstlisting}
+std::vector<int> v{ 1, 3, 5 }; 		// v的初始化内容为1、3、5
+\end{lstlisting}
+
+大括号初始化还能够用来给非静态成员变量赋予初始值。这个C++11的新能力也能够通过等号来实现，但小括号不行：
+
+\begin{lstlisting}
+class Widget {
+	...
+private:
+	int x{ 0 };						// x的初始化值为0
+	int y = 0;						// 与上面相同
+	int z(0);						// 错误！
+};
+\end{lstlisting}
+
+另一方面，不能复制的对象（比如std::atomics——见条款40）也许能够用大括号或小括号进行初始化，等号却不行：
+
+\begin{lstlisting}
+std::atomic<int> ai1{ 0 };			// 工作正常
+std::atomic<int> ai2(0);			// 工作正常
+std::atomic<int> ai3 = 0;			// 错误！
+\end{lstlisting}
+
+通过上面的例子很容易理解为什么大括号初始化被称为统一初始化，因为在C++提供的三种语法中只有大括号能够支持所有的语境。
+
+大括号初始化带来的一个新特性是阻止了内置类型的缩窄转型。如果大括号中的值并不能保证对象能够被正确初始化，这段代码将不能通过编译：
+
+\begin{lstlisting}
+double x, y, z;
+
+...
+
+int sum1{ x + y + z };				// 错误！x+y+z的结果是double而非int
+\end{lstlisting}
+
+使用小括号和等号赋值并不会引起缩窄转型的检查，因为要考虑到遗留代码的兼容性：
+
+\begin{lstlisting}
+int sum2(x + y + z); 				// 工作正常（表达式的值转换成int）
+
+int sum3 = x + y + z; 				// 工作正常
+\end{lstlisting}
+
+大括号初始化带来的另一个值得注意的特性是，它对C++语法解析问题免疫。C++的解析规则有一个副作用，那就是任何能够被解析为声明式的语句一定会被解释为声明式，这导致了一个频繁令人苦恼的问题，每当程序员希望定义一个使用默认构造函数进行初始化的变量时，最终都会无意的被解析成一个函数的声明式。这个问题的根源在于如果你想调用带参数的构造函数，可以这样写：
+
+\begin{lstlisting}
+Widget w1(10);						// 调用参数为10的构造函数
+\end{lstlisting}
+
+但是如果你试图使用类似的语法去调用Widget的无参构造函数时，将会声明一个函数而不是对象：
+
+\begin{lstlisting}
+// 令人苦恼的解析问题！声明了一个名为w2并返回Widget的函数
+Widget w2();					
+\end{lstlisting}
+
+由于函数声明不能用大括号作为参数列表，所以使用大括号来默认构造对象并不存在这个问题：
+
+\begin{lstlisting}
+Widget w3{};						// 调用Widget的默认构造函数
+\end{lstlisting}
+
+因此关于大括号初始化能够引出很多话题。这是一种能够用在大部分情景下的语法，它阻止了隐式的缩窄转型，并且对C++的解析语法问题免疫，简直无所不能！那么为什么这一章的标题不叫“倾向于大括号初始化语法”呢？
+
+原因是大括号初始化有一个缺陷，它有时会带来一些意想不到的行为。而这种行为在大括号初始化、std::initializer\_list和重载构造函数三者的纠缠下会变得更加扑朔迷离，它们之间的相互交叉导致代码表面上在做一件事，实际上确是另一件。例如条款2解释了使用auto声明变量时，如果使用大括号初始化将被推导为std::initializer\_list，而使用其他的初始化语法反而能够得到更符合直觉的类型。这个结果导致了你越喜欢auto，你就越缺少热情去使用大括号初始化。
+
+在调用构造函数时，只要不涉及std::initializer\_list，大括号和小括号具有相同的语义：
+
+\begin{lstlisting}
+class Widget {
+public:
+	Widget(int i, bool b);		
+	Widget(int i, double d);
+	
+	// 没有声明参数为std::initializer_list的构造函数
+	...
+};
+
+Widget w1(10, true); 				// 调用第一个构造函数
+
+Widget w2{10, true}; 				// 调用第一个构造函数
+
+Widget w3(10, 5.0); 				// 调用第二个构造函数
+
+Widget w4{10, 5.0}; 				// 调用第二个构造函数
+\end{lstlisting}
+
+但是如果有一个或者更多的构造函数参数被声明为std::initializer\_list，编译器将会有强烈的倾向去调参数为std::initializer\_list的构造函数，作为那些使用大括号初始化语句的解析结果。更糟糕的是，只要编译器能够将大括号初始化表达式转化成std::initializer\_list，它一定会采取这种解析结果。如果上面的Widget类拥有一个参数为std::initializer\_list<long double>的构造函数，比如这样：
+
+\begin{lstlisting}
+class Widget {
+public:
+	Widget(int i, bool b);
+	Widget(int i, double d);
+
+	// 新添加的构造函数
+	Widget(std::initializer_list<long double> il);	
+	...
+};
+\end{lstlisting}
+
+Widget变量w2和w4将会调用这个新的构造函数，即使相比原来的构造函数，
+元素类型为long double的std::initializer\_list的匹配结果更为糟糕！
+
+\begin{lstlisting}
+Widget w1(10, true); 				// 使用小括号，调用第一个构造函数
+
+// 使用大括号，但是调用std::initializer_list的构造函数（10和true被转型成long double）
+Widget w2{10, true}; 			
+
+Widget w3(10, 5.0); 				// 使用小括号，调用第二个构造函数
+
+// 使用大括号，但是调用std::initializer_list的构造函数（10和5.0被转型成long double）
+Widget w4{10, 5.0}; 			
+\end{lstlisting}
+
+甚至是那些普通的复制和移动的构造函数都会被std::initializer\_list构造函数给劫持：
+
+\begin{lstlisting}
+class Widget {
+public:
+	Widget(int i, bool b);
+	Widget(int i, double d);
+	Widget(std::initializer_list<long double> il);
+
+	operator float() const;			// 转型为float
+	...
+
+};
+
+Widget w5(w4);						// 使用小括号，调用拷贝构造函数 
+
+// 使用大括号，调用std::initializer_list的构造函数（w4被转型为float，再被转型成long double）
+Widget w6{w4};					
+
+Widget w7(std::move(w4)); 			// 使用小括号，调用拷贝构造函数 
+
+// 使用大括号，调用std::initializer_list的构造函数（w4被转型为float，再被转型成long double）
+Widget w8{std::move(w4)};		
+\end{lstlisting}
+
+编译器将大括号初始化和接受std::initializer\_list的构造函数匹配的意愿非常强烈，它甚至在std::initializer\_list构造函数不能被调用的情况下，会阻止其他完全匹配的构造函数被调用。例如：
+
+\begin{lstlisting}
+class Widget {
+public:
+	Widget(int i, bool b);
+	Widget(int i, double d);
+	Widget(std::initializer_list<long double> il);
+
+	...								// 没有隐式转型函数
+
+};
+
+Widget w{10, 5.0};					// 错误！需要缩窄转型
+\end{lstlisting}
+
+在这个例子中，编译器将会完全忽视掉前两个构造函数（注意到第二个构造函数的参数是完全匹配的），并且试图调用那个接受std::initializer\_list<bool>为参数的构造函数。而调用那个构造函数需要将int(10)和double(5.0)转型为bool。这两个转型都是缩窄转型（bool不能被其它值表示），而大括号初始化又阻止了缩窄转型，因此这个调用是非法的，代码无法通过编译。
+
+只有当无法将std::initializer\_list中的值转型成正确的类型时，编译器才会将其他的重载构造函数作为大括号初始化的调用函数。例如，如果我们将std::initializer\_list<bool>改写成std::initializer\_list<std::string>，此时其他的重载构造函数才会重新成为候选，因为编译器无法将int和bool转型为std::string：
+
+\begin{lstlisting}
+class Widget {
+public:
+	Widget(int i, bool b);
+	Widget(int i, double d);
+
+	// std::initializer_list的元素类型为std::string
+	Widget(std::initializer_list<std::string> il);
+
+	...								// 没有隐式转型函数
+
+};
+
+Widget w1(10, true); 				// 使用小括号，调用第一个构造函数
+
+Widget w2{10, true}; 				// 使用大括号，但调用第一个构造函数
+
+Widget w3(10, 5.0); 				// 使用小括号，调用第二个构造函数
+
+Widget w4{10, 5.0}; 				// 使用大括号，但调用第二个构造函数
+\end{lstlisting}
+
+现在我们就快结束大括号初始化和重载构造函数的讨论了，但还有一个极端情况需要说明。如果你用一个空的大括号试图去初始化一个对象，而它既提供默认构造函数，又提供std::initializer\_list为参数的构造函数，它将会调用哪一个？如果空的大括号表示没有参数，那么应该调用默认构造函数；如果它表示空的std::initializer\_list，那么就应该调用后一个构造函数。
+
+解析规则告诉我们最终会调用默认构造函数。空的大括号表示没有参数。而不是空的std::initializer\_list：
+
+\begin{lstlisting}
+class Widget {
+public:
+	Widget();						// 默认构造函数
+
+	// std::initializer_list构造函数
+	Widget(std::initializer_list<int> il); 	
+
+	...								// 没有隐式转型函数
+};
+
+Widget w1; 							// 调用默认构造函数
+
+Widget w2{}; 						// 调用默认构造函数
+
+Widget w3(); 						// 令人苦恼的解析难题，这是一个函数声明！
+\end{lstlisting}
+
+如果你想用空的std::initializer\_list调用参数为std::initializer\_list的构造函数，你需要将参数的周围再加上大括号或者小括号加以区分，用它作为构造函数的参数：
+
+\begin{lstlisting}
+// 调用参数为std::initializer_list的构造函数
+Widget w4({}); 					
+
+// 调用参数为std::initializer_list的构造函数
+Widget w5{{}}; 					
+\end{lstlisting}
+
+此时此刻，在了解这么多关于大括号初始化，std::initializer\_list和重载构造函数的复杂规则后，你也许想知道实际编程的过程中遭遇这类问题的频繁程度。事实上会多得超出你的想象，因为std::vector就受到了这类问题的困扰。std::vector有一个非std::initializer\_list的构造函数接受两个参数，一个是容器的大小，一个是元素的初始值，但另一个std::initializer\_list构造函数则允许向对象传递初始值。因此如果你定义一个数值类型的std::vector，然后向这个对象传递两个参数，那么传递参数的方式将会极大的影响这个对象的值：
+
+\begin{lstlisting}
+// 调用参数为数值的构造函数：创建一个拥有10个元素，每个元素初始值为20的容器
+std::vector<int> v1(10, 20); 	
+
+// 调用参数为std::initializer_list的构造函数：创建一个拥有两个元素的容器，元素值为10和20
+std::vector<int> v2{10, 20}; 	
+\end{lstlisting}
+
+让我们从std::vector和大括号、小括号以及重载构造函数的解析规则的细节中跳出来，在这个问题上有两个基本关注点值得讨论。第一，作为类的设计者，如果你的类包含了一个或多个接受std::initializer\_list为参数的构造函数，此时用户代码如果使用大括号初始化，将会忽略掉所有的非std::initializer\_list构造函数，只调用参数为std::initializer\_list的构造函数。因此你在设计构造函时，应该避免因大括号或小括号造成初始化结果不同的影响。换句话说，你应该意识到std::vector接口的设计错误，然后在设计类的时候避免这类问题。
+
+另外一个隐含的问题是，如果你有一个之前不包含std::initializer\_list构造函数的类，在重构过程中添加了一个，那么你之前所有使用大括号初始化的代码可能会被重新解析，从调用普通的构造函数变成参数为std::initializer\_list的构造函数。当然，这一类问题在你向一类重载函数添加新函数的时候经常发生：那些调用旧函数的代码将会被解析成调用新函数。但它们有一个重要的区别：参数为std::initializer\_list的构造函数根本就不会和其他的非std::initializer\_list构造函数进行竞争，它几乎遮盖了其他所有的构造函数，除非无法进行类型转换。所以向类中添加这样的重载构造函数时一定要慎重考虑。
+
+第二个教训是作为类的使用者，你必须很小心的在大括号和小括号之间取舍来作为初始化对象的方式。大部分开发者都会选择其中的一种作为默认方式，只有在必要的情况下才会用另一种方式。如果你喜欢大括号的广泛应用场景，阻止缩窄转型以及对C++解析语法问题的免疫，那么就选择大括号初始化，只是要弄明白在有些情况下小括号是必须的（比如给定大小和初始值来创建std::vector对象）。另一方面，那些希望与C++98保持语法一致，比且避免std::initializer\_list引起的auto类型推导问题，以及重载std::initializer\_list构造函数引起的函数调用问题的开发者则会倾向选择小括号初始化，只不过有的时候必须用到大括号（比如用特定的初始值来初始化）。这两种方法孰优孰劣目前并没有达成共识，因此我的建议是选择其中的一种然后坚持使用它。
+
+如果你是模板的作者，那么大括号和小括号在创建对象的差异会特别令人沮丧，因为通常无法得知哪一种方式更应该使用。比如你想要创建一个对象，它可以是任意类型，也可以用任意参数来初始化。一番考虑后你写出这样的可变模板：
+
+\begin{lstlisting}
+// 描述这个对象的类型和参数
+template<typename T, typename... Ts>		
+void doSomeWork(Ts&&... params)
+{
+	create local T object from params...
+	...
+}
+\end{lstlisting}
+
+有两种方式能够填充这段伪代码（查看条款25了解有关std::forward的信息）：
+
+\begin{lstlisting}
+T localObject(std::forward<Ts>(params)...); 	// 使用小括号
+
+T localObject{std::forward<Ts>(params)...}; 	// 使用大括号
+\end{lstlisting}
+
+考虑要调用的代码：
+
+\begin{lstlisting}
+std::vector<int> v;
+...
+doSomeWork<std::vector<int>>(10, 20);
+\end{lstlisting}
+
+如果doSomeWork用小括号来创建localObject，那么结果是创建了一个有10个元素的std::vector。如果doSomeWork用大括号，那么结果是创建了一个有2个元素的std::vector。哪一种方式是正确的？doSomeWork的作者不知道，恐怕只有调用者自己知道。
+
+这正是标准库中std::make\_unique和std::make\_shared面临的问题（查看条款21）。这两个函数通过在内部使用小括号，并且在文档中标明了它们的接口来解决这个问题。
+
+\begin{mdframed}
+请记住：
+\begin{itemize}
+\item{大括号初始化是最为通用的初始化语法，他能够阻止缩窄转型并且避免C++的解析语法问题。}
+\item{在重载构造函数的选择中，大括号初始化总是会尽可能的选择参数为std::initializer\_list的构造函数，即使其它的构造函数有更好的匹配结果。} 
+\item{一个因为选取大括号或小括号进行初始化从而导致巨大差异的最典型例子是：用两个参数来创建一个std::vector<numeric type>对象。} 
+\item{在模板中选择用大括号或者小括号来创建对象是一个挑战。} 
+\end{itemize}
+\end{mdframed}
+
+
+
+
+
+
+
+
