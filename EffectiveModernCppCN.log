@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.99991 (TeX Live 2014) (preloaded format=xelatex 2015.3.28)  23 JUN 2015 17:09
+This is XeTeX, Version 3.14159265-2.6-0.99991 (TeX Live 2014) (preloaded format=xelatex 2015.3.28)  30 SEP 2015 10:19
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1474,12 +1474,27 @@ Package mdframed Info: mdframed works in twoside mode on input line 195.
 Package mdframed Info: mdframed works in twoside mode on input line 198.
  [17]
 Package mdframed Info: Not enough space on this page on input line 204.
-) (./Chapter1/item4.tex [18]))
-(./Chapter2/chapter2.tex [19] [20
+) (./Chapter1/item4.tex [18] [19]
+Overfull \hbox (51.53711pt too wide) in paragraph at lines 157--158
+\EU1/lmr/m/n/10 volatile \EU1/STHeitiSC-Light(0)/m/n/10 或 者 引 用 修 饰 符 \EU1/lmr/
+m/n/10 (\EU1/STHeitiSC-Light(0)/m/n/10 所 以 函 数 名 带 有 一 个  |“\EU1/lmr/m/n/10 wit
+h_cvr\EU1/STHeitiSC-Light(0)/m/n/10 ”| \EU1/lmr/m/n/10 )\EU1/STHeitiSC-Light(0)
+/m/n/10 。|  其 返 回 结 果 是 一 个 \EU1/lmr/m/n/10 boost::typeindex::type_index
+ []
+
+[20]
+Overfull \hbox (12.92491pt too wide) in paragraph at lines 186--187
+[]\EU1/STHeitiSC-Light(0)/m/n/10 这 种 近 乎 一 致 的 表 示 是 很 好 的，|  但 是 也 要 记 住 \EU1/
+lmr/m/n/10 IDE \EU1/STHeitiSC-Light(0)/m/n/10 编 辑 器，|  编 译 错 误 信 息 或 者 类 似 \EU1
+/lmr/m/n/10 Boost.TypeIndex
+ []
+
+Package mdframed Info: mdframed works in twoside mode on input line 189.
+)) (./Chapter2/chapter2.tex [21] [22
 
 ]
 Chapter 2.
-(./Chapter2/item6.tex [21] [22]
+(./Chapter2/item6.tex [23] [24]
 Overfull \hbox (3.69711pt too wide) in paragraph at lines 89--90
 \EU1/STHeitiSC-Light(0)/m/n/10 函 数 调 用 的 返 回 值 上，|  所 以 函 数 签 名 通 常 能 够 反 映 它 们
  的 存 在。|  这 是 \EU1/lmr/m/n/10 std::vector<bool>::operator[]
@@ -1494,11 +1509,16 @@ n/10 bool\EU1/STHeitiSC-Light(0)/m/n/10 。|  在 运 行 过 程 中，| \EU1/l
 vector<bool>::operator[]
  []
 
-[23]
+[25]
 Package mdframed Info: mdframed works in twoside mode on input line 153.
+
+
+LaTeX Warning: Reference `mdf@pagelabel-5' on page 26 undefined on input line 1
+58.
+
 ))
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 51.
- [24]
+ [26]
 Package atveryend Info: Empty hook `AfterLastShipout' on input line 51.
  (./EffectiveModernCppCN.aux)
 Package atveryend Info: Empty hook `AtVeryEndDocument' on input line 51.
@@ -1507,14 +1527,20 @@ Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 51.
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
  ) 
 Here is how much of TeX's memory you used:
- 26828 strings out of 493724
- 516284 string characters out of 6145899
+ 26874 strings out of 493724
+ 517389 string characters out of 6145899
  793022 words of memory out of 5000000
- 29869 multiletter control sequences out of 15000+600000
+ 29915 multiletter control sequences out of 15000+600000
  26059 words of font info for 65 fonts, out of 8000000 for 9000
  1328 hyphenation exceptions out of 8191
  52i,6n,69p,10428b,1045s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on EffectiveModernCppCN.pdf (24 pages).
+Output written on EffectiveModernCppCN.pdf (26 pages).

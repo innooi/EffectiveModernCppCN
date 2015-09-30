@@ -53,15 +53,143 @@ error: 'yType' use undefined class 'TD<const int *>'
 仅仅只是不同的格式。通过这种技术，我所测试的所有编译器都产生我所需要的类型信息。
 
 \subsection{运行时输出}
+使用printf手段显示类型的信息只有在运行时才能体现出来（尽管我并不推荐你使用printf），但是这种手段能够完整地控制输出格式。使用文本表示的唯一困难就是如何合适的显示。你一定会觉得，“这有什么难的，使用typeid和std::type\_info::name就能够轻松解决了”。为了能够查看x和y的类型推导，你可能会写出下面的代码：
 
+\begin{lstlisting}
+std::cout << typeid(x).name << '\n'; //显示x和y的类型
+std::cout << typeid(y).name << '\n';
+\end{lstlisting}
 
+这个方法依赖于这样一个事实：对对象x和y使用typeid函数将会返回一个std::type\_info对象，而std::type\_info对象有一个成员函数name，将会产生一个C-style的字符串（如const char *）用于表示类型的名字。
 
+调用std::type\_info::name并不保证返回正确的结果，但是一定程度上会有所帮助。其帮助的等级也会有所不同。例如，GNU和Clang的编译器汇报x的类型是“i”，y的类型是“PKi”。一旦你理解了这些，你就会明白这些输出是有意义的。“i”表示“int”，而“PK”表示“pointer to const”（两个编译器都支持c++filt这个工具，用于解码这些“损坏（mangled）”类型）。微软的编译器产生了更少的输出：“int”表示x，而“int const *”表示y。
 
+这些对于x和y的推导结果都是正确的，所以你可能会认为类型汇报的问题已经解决了。但是请先别忙，考虑一个更加复杂的情况：
 
+\begin{lstlisting}
+template<typename T> //被调用的模板函数
+void f(const T& param);
 
+std::vector<Widget> createVec(); //工厂函数
 
+const auto vw = createVec(); //使用工厂函数初始化vw
 
+if (!vw.empty()) {
+	f(&vw[0]);	//调用f
+	...
+}
+\end{lstlisting}
 
+这段代码中有一个用户定义类型(Widget)，一个STL容器(std::vector)，和一个auto变量(vw)。这是一个非常典型的情况，你可能会很想知道你的编译器类型推导的结果。例如，模板类型形参T和f的函数形参。
+
+了解问题中得typeid是很容易的。向f函数加入一些代码，你就会看到：
+
+\begin{lstlisting}
+template<typename T>
+void f(const T& param)
+{
+	using std::cout;
+	cont << "T = 		" << typeid(T).name() << '\n'; //显示T的类型
+	cout << "param = 	" << typeid(param).name() << '\n'; //显示param的类型
+}
+\end{lstlisting}
+
+执行GNU和Clang编译出的代码后输出：
+
+\begin{lstlisting}
+	T =		PK6Widget
+	param =	PK6Widget
+\end{lstlisting}
+
+我们现在已经知道，对于这些编译器而言，“PK”代表“pointer to const”，所以唯一神秘的地方就是数字6。这个简单的代表了接下来类名的字符个数。所以编译器告诉我们T和param都是const Widget*类型的。
+
+微软的编译器也同意：
+
+\begin{lstlisting}
+	T =		class Widget const *
+	param =	class Widget const *
+\end{lstlisting}
+
+3个独立的编译器生成了相同的结果。但是仔细看一下，在模板f中，param的推导类型是const T\&。在这种情况下，T和param拥有相同的类型不是非常奇怪吗？如果T是一个int类型，那么param应该是const int\&，根本不应该是相同的类型。
+
+不幸的是，std::type\_info::name的结果并不可靠。在这个例子中，这3个编译器所汇报param类型都是错误的。而且，它们实际上是被要求输出错误的结果，因为std::type\_info::name明确规定了形参类型推导应当被视作如它们作为一个传值传递的参数一样。正如条款1所说的，这意味着如果类型是一个引用，其引用性会被忽略，如果被去掉引用后是静态类型(或volatile)的，那么其静态性(volatileness)也会被忽略。所以这也是为什么param的类型--const Widget * const \&被汇报为const Widget *。首先引用性被忽略，然后指针的静态性也被消除。
+
+同样不幸的是，IDE编辑器中显示的类型信息也是不可靠的，或者至少是不那么可用的。还是刚才那个例子，一个我所知道的IDE编辑器对T的上报结果如下：
+
+\begin{lstlisting}
+conststd::_Simple_types<std::_Wrap_alloc<std::_Vec_base_types<Widget,std::allocator<Widget> >::_Alloc>::value_type>::value_type *
+\end{lstlisting}
+
+同样的编辑器显示param的类型是：
+
+\begin{lstlisting}
+const std::_Simple_types<...>::value_type *const &
+\end{lstlisting}
+
+比起T类型的类型还是简单一些，但是其中的“...”可能会令你迷惑，直到你意识到了，这是编辑器在告诉你：“我删除了T类型的部分”。运气好的话，你的开发环境应该能比这个做得更好。
+
+如果你更倾向于依赖库而不是幸运，当你知道std::type\_info::name和IDE也会出错，而Boost中的TypeIndex库(常被写作Boost.TypeIndex)一定不会出错时，你一定会很高兴。TypeIndex不是C++标准库的一部分，也不是IDE或者类似TD的模板。Boost库是一个跨平台、开源的，其基于一个即使是最多疑的团队也能够接受的协议，这也意味着使用Boost库的可移植性非常接近C++标准库。
+
+以下使用Boost.TypeIndex实现的代码：
+
+\begin{lstlisting}
+template<typename T>
+void f(const T& param)
+{
+	using std::cout;
+	using boost::typeindex::type_id_with_cvr;
+	
+	//显示T的类型
+	cout << "T = 	"
+	     << type_id_with_cvr<T>().pretty_name();
+	     << '\n';
+	
+	//显示param的类型
+	cout << "param = "
+	     << type_id_with_cvr<decltype(param)>().pretty_name();
+	     << '\n';
+	...
+}
+\end{lstlisting}
+
+模板函数boost::typeindex::type\_id\_with\_cvr接收一个类型参数，它不会移除任何const, volatile或者引用修饰符(所以函数名带有一个“with\_cvr”)。其返回结果是一个boost::typeindex::type\_index对象中的成员函数pretty\_name生成的类型字符串。
+
+在这种实现下，重新考虑一下当使用typeid时param输出的错误类型信息：
+
+\begin{lstlisting}
+std::vector<Widget> createVec(); //工厂函数
+
+const auto vw = createVec(); //使用工厂函数初始化vw
+
+if (!vw.empty()) {
+	f(&vw[0]);	//调用f
+	...
+}
+\end{lstlisting}
+
+使用GNU和Clang的编译器编译后。Boost.TypeIndex生成了这样的(精确的)输出：
+
+\begin{lstlisting}
+T =		Widget const*
+param =	Widget const* const& 
+\end{lstlisting}
+
+使用微软编译器也生成了相同的信息：
+
+\begin{lstlisting}
+T =		class Widget const*
+param =	class Widget const* const& 
+\end{lstlisting}
+
+这种近乎一致的表示是很好的，但是也要记住IDE编辑器，编译错误信息或者类似Boost.TypeIndex的库都仅仅只是帮助你查看编译器的推导信息的辅助工具。它们可能会很有用，但是深刻理解条款1-3所带来的好处是不可替代的。
+
+\begin{mdframed}
+请记住：
+\begin{itemize}
+\item{使用IDE编辑器，编译错误信息和Boost TypeIndex库可以查看类型推导的结果。}
+\item{使用某些工具获取的推导结果不一定是精确的，因此理解C++的类型推导规则仍然是非常重要的。}
+\end{itemize}
+\end{mdframed}
 
 
 

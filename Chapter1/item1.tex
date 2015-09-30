@@ -275,7 +275,7 @@ void f2(T& param); //引用传递方式
 
 f1(someFunc); //param被推导为一个函数指针，类型是void(*)(int, double)
 
-f1(someFunc); //param被推导为一个函数引用，类型是void(&)(int, double)
+f2(someFunc); //param被推导为一个函数引用，类型是void(&)(int, double)
 \end{lstlisting}
 
 在实际情况中很难有什么区别，但是当你了解到了数组-指针的退化时，你也同样应该了解到函数-指针的退化。
